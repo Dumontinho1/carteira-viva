@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carteira Viva</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f2f5f3; --surface: #ffffff; --surface-2: #e9edea;
+    --ink: #10201a; --ink-muted: #57685f; --ink-faint: #8a978f; --border: #d8dfda;
+    --accent: #0e6b4f; --accent-ink: #ffffff; --accent-soft: #dcefe4;
+    --positive: #006300; --negative: #b3261e;
+    --chip-bg: #eef2ef;
+    --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4;
+    --shadow: 0 1px 2px rgba(16,32,26,0.06), 0 8px 24px -12px rgba(16,32,26,0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d1512; --surface: #131f1a; --surface-2: #1a2b23;
+      --ink: #e9f1ec; --ink-muted: #9fb1a7; --ink-faint: #6d8177; --border: #24352c;
+      --accent: #35c08c; --accent-ink: #06120d; --accent-soft: #17332a;
+      --positive: #35c08c; --negative: #ff8a7a;
+      --chip-bg: #1a2b23;
+      --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d1512; --surface: #131f1a; --surface-2: #1a2b23;
+    --ink: #e9f1ec; --ink-muted: #9fb1a7; --ink-faint: #6d8177; --border: #24352c;
+    --accent: #35c08c; --accent-ink: #06120d; --accent-soft: #17332a;
+    --positive: #35c08c; --negative: #ff8a7a;
+    --chip-bg: #1a2b23;
+    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-inline: 20px; padding-block: 28px 64px;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1080px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+  [hidden] { display: none !important; }
+
+  /* ---- Auth screen ---- */
+  .auth-screen { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 100%; max-width: 380px; box-shadow: var(--shadow); }
+  .auth-card h1 { font-family: "Fraunces", Georgia, serif; font-size: 24px; margin: 0 0 4px; }
+  .auth-card p.sub { color: var(--ink-muted); font-size: 13px; margin: 0 0 20px; }
+  .auth-tabs { display: flex; gap: 4px; background: var(--chip-bg); padding: 4px; border-radius: 10px; margin-bottom: 18px; }
+  .auth-tab { flex: 1; appearance: none; border: none; background: transparent; padding: 8px; border-radius: 7px; font: inherit; font-weight: 600; font-size: 13px; color: var(--ink-muted); cursor: pointer; }
+  .auth-tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .auth-error { background: color-mix(in srgb, var(--negative) 12%, transparent); color: var(--negative); font-size: 12.5px; padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; }
+  .auth-error:empty { display: none; }
+
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand h1 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 26px; margin: 0; letter-spacing: -0.01em; }
+  .brand p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+  .top-actions { display: flex; align-items: center; gap: 10px; }
+  .user-chip { font-size: 12px; color: var(--ink-muted); }
+
+  .tabs { display: flex; gap: 4px; background: var(--chip-bg); padding: 4px; border-radius: 12px; width: fit-content; }
+  .tab-btn { appearance: none; border: none; background: transparent; color: var(--ink-muted); font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 14px; border-radius: 9px; cursor: pointer; }
+  .tab-btn[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .panel { display: none; flex-direction: column; gap: 20px; }
+  .panel.active { display: flex; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
+  .card h2 { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
+  .card .sub { margin: 0 0 14px; color: var(--ink-muted); font-size: 12.5px; }
+
+  .hero { display: flex; flex-direction: column; gap: 18px; }
+  .hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .hero-label { font-size: 12.5px; color: var(--ink-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .hero-value { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: clamp(32px, 6vw, 48px); line-height: 1.05; margin-top: 4px; }
+  .delta-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+  .delta-badge.up { background: color-mix(in srgb, var(--positive) 14%, transparent); color: var(--positive); }
+  .delta-badge.down { background: color-mix(in srgb, var(--negative) 14%, transparent); color: var(--negative); }
+  .delta-badge.flat { background: var(--chip-bg); color: var(--ink-muted); }
+
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stat-tile { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+  .stat-tile .k { font-size: 11.5px; color: var(--ink-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-tile .v { font-size: 19px; font-weight: 700; margin-top: 3px; }
+  .stat-tile .v.pos { color: var(--positive); }
+  .stat-tile .v.neg { color: var(--negative); }
+
+  .grid-2 { display: grid; grid-template-columns: 1.1fr 1.4fr; gap: 20px; }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .legend { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 160px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .legend-row .name { flex: 1; color: var(--ink); }
+  .legend-row .pct { font-weight: 700; }
+  .legend-row .amt { color: var(--ink-muted); font-size: 11.5px; }
+  .empty-note { color: var(--ink-muted); font-size: 13px; padding: 20px 0; text-align: center; }
+
+  .line-svg text { fill: var(--ink-faint); font-size: 9.5px; font-family: "IBM Plex Mono", monospace; }
+  .line-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-muted); font-weight: 600; padding: 0 10px 8px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; }
+  .table-scroll { overflow-x: auto; }
+  .type-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: var(--chip-bg); }
+  .type-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+  button.icon-btn, button.ghost-btn { appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+  button.icon-btn:hover, button.ghost-btn:hover { background: var(--surface-2); }
+  button.primary-btn { appearance: none; border: none; background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 13.5px; font-weight: 700; padding: 10px 16px; border-radius: 10px; cursor: pointer; }
+  button.primary-btn:hover { filter: brightness(1.06); }
+  button.primary-btn:disabled { opacity: .6; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.danger { color: var(--negative); border-color: color-mix(in srgb, var(--negative) 40%, var(--border)); }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .section-head .titles h2 { margin: 0; }
+  .section-head .titles p { margin: 2px 0 0; color: var(--ink-muted); font-size: 12.5px; }
+  .head-actions { display: flex; gap: 8px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(8, 14, 11, 0.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+  .overlay[hidden] { display: none; }
+  .modal { background: var(--surface); border-radius: 16px; padding: 22px; width: 100%; max-width: 420px; box-shadow: var(--shadow); border: 1px solid var(--border); max-height: 88vh; overflow-y: auto; }
+  .modal h3 { margin: 0 0 14px; font-size: 16px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--ink-muted); }
+  .field input, .field select { font: inherit; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); width: 100%; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+  .empty-state { text-align: center; padding: 36px 16px; color: var(--ink-muted); font-size: 13.5px; }
+  .list-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border); }
+  .list-row:last-child { border-bottom: none; }
+  .list-row .icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex: none; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13px; }
+  .list-row .meta { flex: 1; min-width: 0; }
+  .list-row .meta .t { font-weight: 600; font-size: 13.5px; }
+  .list-row .meta .d { color: var(--ink-muted); font-size: 12px; }
+  .list-row .amt { font-weight: 700; font-size: 14px; }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow); z-index: 30; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  .roadmap-note { display: flex; gap: 10px; align-items: flex-start; background: var(--accent-soft); border-radius: 12px; padding: 14px 16px; font-size: 12.5px; color: var(--ink); }
+  .csv-hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 6px; }
+  footer.foot { text-align: center; color: var(--ink-faint); font-size: 11.5px; padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ===== AUTH SCREEN ===== -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <h1>Carteira Viva</h1>
+    <p class="sub">Seu painel pessoal de investimentos</p>
+    <div class="auth-tabs">
+      <button class="auth-tab" id="tab-signin" aria-selected="true">Entrar</button>
+      <button class="auth-tab" id="tab-signup" aria-selected="false">Criar conta</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <form id="form-auth">
+      <div class="field"><label for="auth-email">E-mail</label><input id="auth-email" type="email" required autocomplete="email"></div>
+      <div class="field"><label for="auth-pass">Senha</label><input id="auth-pass" type="password" required autocomplete="current-password" minlength="6"></div>
+      <button type="submit" class="primary-btn" id="auth-submit" style="width:100%;">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div class="wrap" id="app" hidden>
+  <div class="top">
+    <div class="brand">
+      <h1>Carteira Viva</h1>
+      <p>Painel pessoal de investimentos — cotações atualizadas automaticamente</p>
+    </div>
+    <div class="top-actions">
+      <span class="user-chip" id="user-chip"></span>
+      <button class="ghost-btn" id="btn-signout">Sair</button>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Seções">
+    <button class="tab-btn" role="tab" data-tab="visao" aria-selected="true">Visão geral</button>
+    <button class="tab-btn" role="tab" data-tab="carteira" aria-selected="false">Carteira</button>
+    <button class="tab-btn" role="tab" data-tab="proventos" aria-selected="false">Proventos</button>
+    <button class="tab-btn" role="tab" data-tab="eventos" aria-selected="false">Eventos</button>
+  </nav>
+
+  <section class="panel active" id="panel-visao">
+    <div class="card hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-label">Patrimônio total</div>
+          <div class="hero-value mono" id="hero-total">R$ 0,00</div>
+        </div>
+        <span class="delta-badge flat" id="hero-delta">—</span>
+      </div>
+      <div class="sub" id="hero-sync" style="margin:-8px 0 0;">Cotações: aguardando 1ª atualização</div>
+      <div class="stat-row">
+        <div class="stat-tile"><div class="k">Investido</div><div class="v mono" id="stat-invested">R$ 0,00</div></div>
+        <div class="stat-tile"><div class="k">Resultado</div><div class="v mono" id="stat-result">R$ 0,00</div></div>
+        <div class="stat-tile"><div class="k">Ativos</div><div class="v mono" id="stat-count">0</div></div>
+        <div class="stat-tile"><div class="k">Proventos no ano</div><div class="v mono" id="stat-divs">R$ 0,00</div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><h2>Alocação por tipo</h2><p class="sub">Distribuição do valor atual da carteira</p><div id="donut-host"></div></div>
+      <div class="card"><h2>Evolução do patrimônio</h2><p class="sub">Um ponto por dia, gravado pela atualização automática</p><div id="line-host"></div></div>
+    </div>
+    <div class="roadmap-note">
+      <span>🔄</span>
+      <div><b>Cotações automáticas:</b> ações, FIIs e cripto são atualizados 1x por dia com o preço de mercado; CDB/LCI/LIG têm o valor recalculado com o CDI/IPCA do dia, via GitHub Actions.</div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-carteira">
+    <div class="card">
+      <div class="section-head">
+        <div class="titles"><h2>Meus ativos</h2><p>Ações, FIIs, renda fixa, fundos e cripto</p></div>
+        <div class="head-actions"><button class="primary-btn" id="btn-add-holding">+ Ativo</button></div>
+      </div>
+      <div id="holdings-host"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-proventos">
+    <div class="card">
+      <div class="stat-row" style="margin-bottom: 18px;">
+        <div class="stat-tile"><div class="k">Este mês</div><div class="v mono" id="div-month">R$ 0,00</div></div>
+        <div class="stat-tile"><div class="k">Este ano</div><div class="v mono" id="div-year">R$ 0,00</div></div>
+        <div class="stat-tile"><div class="k">Total registrado</div><div class="v mono" id="div-total">R$ 0,00</div></div>
+      </div>
+      <div class="section-head">
+        <div class="titles"><h2>Lançamentos</h2><p>Dividendos, JCP e rendimentos recebidos</p></div>
+        <div class="head-actions"><button class="primary-btn" id="btn-add-div">+ Provento</button></div>
+      </div>
+      <div id="div-host"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-eventos">
+    <div class="card">
+      <div class="section-head">
+        <div class="titles"><h2>Próximos eventos</h2><p>Vencimentos, pagamentos e datas para acompanhar</p></div>
+        <div class="head-actions"><button class="primary-btn" id="btn-add-event">+ Evento</button></div>
+      </div>
+      <div id="event-host"></div>
+    </div>
+  </section>
+
+  <footer class="foot">Dados salvos no seu banco Supabase — só sua conta acessa.</footer>
+</div>
+
+<!-- Holding modal -->
+<div class="overlay" id="overlay-holding" hidden>
+  <form class="modal" id="form-holding">
+    <h3 id="holding-modal-title">Novo ativo</h3>
+    <input type="hidden" id="h-id">
+    <div class="field"><label for="h-name">Nome</label><input id="h-name" required placeholder="Ex.: Petrobras, Maxi Renda, Bitcoin"></div>
+    <div class="field"><label for="h-type">Tipo</label>
+      <select id="h-type">
+        <option value="acoes">Ações</option>
+        <option value="fiis">FIIs</option>
+        <option value="outros">Cripto</option>
+        <option value="fundos">Fundos</option>
+        <option value="renda_fixa">Renda fixa (CDB / LCI / LIG)</option>
+      </select>
+    </div>
+    <div id="group-market">
+      <div class="field"><label for="h-ticker">Ticker</label><input id="h-ticker" placeholder="Ex.: PETR4, MXRF11, BTC"></div>
+      <div class="field-row">
+        <div class="field"><label for="h-qty">Quantidade</label><input id="h-qty" type="number" step="any" min="0"></div>
+        <div class="field"><label for="h-avg">Preço médio (R$)</label><input id="h-avg" type="number" step="any" min="0"></div>
+      </div>
+      <p class="csv-hint" style="margin:-4px 0 12px;">A cotação atual é buscada automaticamente 1x por dia.</p>
+    </div>
+    <div id="group-fixedincome" hidden>
+      <div class="field-row">
+        <div class="field"><label for="h-rf-subtype">Produto</label>
+          <select id="h-rf-subtype"><option value="CDB">CDB</option><option value="LCI">LCI</option><option value="LIG">LIG</option><option value="Outro">Outro</option></select>
+        </div>
+        <div class="field"><label for="h-rf-indexer">Indexador</label>
+          <select id="h-rf-indexer"><option value="cdi">% do CDI</option><option value="ipca">IPCA+</option><option value="pre">Prefixado</option></select>
+        </div>
+      </div>
+      <div class="field"><label for="h-rf-rate" id="h-rf-rate-label">Taxa (% do CDI)</label><input id="h-rf-rate" type="number" step="any" min="0" placeholder="Ex.: 105"></div>
+      <div class="field"><label for="h-rf-principal">Valor aplicado (R$)</label><input id="h-rf-principal" type="number" step="any" min="0"></div>
+    </div>
+    <div class="field"><label for="h-date" id="h-date-label">Data da compra</label><input id="h-date" type="date"></div>
+    <div class="modal-actions">
+      <button type="button" class="ghost-btn" data-close="overlay-holding">Cancelar</button>
+      <button type="submit" class="primary-btn">Salvar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Dividend modal -->
+<div class="overlay" id="overlay-div" hidden>
+  <form class="modal" id="form-div">
+    <h3>Novo provento</h3>
+    <div class="field"><label for="d-name">Ativo</label><input id="d-name" required placeholder="Ex.: MXRF11"></div>
+    <div class="field-row">
+      <div class="field"><label for="d-amt">Valor (R$)</label><input id="d-amt" type="number" step="any" min="0" required></div>
+      <div class="field"><label for="d-date">Data</label><input id="d-date" type="date" required></div>
+    </div>
+    <div class="field"><label for="d-type">Tipo</label>
+      <select id="d-type"><option value="dividendo">Dividendo</option><option value="jcp">JCP</option><option value="rendimento">Rendimento</option><option value="outro">Outro</option></select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="ghost-btn" data-close="overlay-div">Cancelar</button>
+      <button type="submit" class="primary-btn">Salvar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Event modal -->
+<div class="overlay" id="overlay-event" hidden>
+  <form class="modal" id="form-event">
+    <h3>Novo evento</h3>
+    <div class="field"><label for="e-title">Descrição</label><input id="e-title" required placeholder="Ex.: Vencimento CDB Banco X"></div>
+    <div class="field-row">
+      <div class="field"><label for="e-date">Data</label><input id="e-date" type="date" required></div>
+      <div class="field"><label for="e-type">Tipo</label>
+        <select id="e-type"><option value="dividendo">Dividendo</option><option value="vencimento">Vencimento</option><option value="rendimento">Rendimento</option><option value="outro">Outro</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="ghost-btn" data-close="overlay-event">Cancelar</button>
+      <button type="submit" class="primary-btn">Salvar</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ====== CONFIGURAÇÃO — preencha com os dados do seu projeto Supabase ======
+  // Project Settings > API, no painel do Supabase.
+  var SUPABASE_URL = "https://pjzlrrswldgksinwsxft.supabase.co";
+  var SUPABASE_PUBLISHABLE_KEY = "sb_publishable_4RLBiRgjBSdujQvwJi_Uvw_gKGXjUZe";
+  // ============================================================================
+
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  var TYPES = {
+    acoes:      { label: "Ações",              color: "var(--c2)" },
+    fiis:       { label: "FIIs",                color: "var(--c3)" },
+    renda_fixa: { label: "Renda fixa",          color: "var(--c1)" },
+    fundos:     { label: "Fundos",              color: "var(--c4)" },
+    outros:     { label: "Cripto",              color: "var(--c5)" }
+  };
+  var TYPE_ORDER = ["renda_fixa", "acoes", "fiis", "fundos", "outros"];
+
+  var state = { holdings: [], dividends: [], events: [], history: [], userId: null };
+
+  function fmtBRL(n) { if (!isFinite(n)) n = 0; return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+  function fmtPct(n) { if (!isFinite(n)) n = 0; return (n >= 0 ? "+" : "") + n.toFixed(2).replace(".", ",") + "%"; }
+  function fmtDate(iso) { if (!iso) return "—"; var d = new Date(iso + "T00:00:00"); return isNaN(d.getTime()) ? iso : d.toLocaleDateString("pt-BR"); }
+  function todayISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function showToast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+  function daysAgoLabel(iso) {
+    if (!iso) return "aguardando 1ª atualização";
+    var then = new Date(iso);
+    if (isNaN(then.getTime())) return "aguardando 1ª atualização";
+    var days = Math.floor((Date.now() - then.getTime()) / 86400000);
+    if (days <= 0) return "atualizado hoje";
+    if (days === 1) return "atualizado ontem";
+    return "atualizado há " + days + " dias";
+  }
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ---------- Auth ----------
+  var authMode = "signin";
+  document.getElementById("tab-signin").addEventListener("click", function () { setAuthMode("signin"); });
+  document.getElementById("tab-signup").addEventListener("click", function () { setAuthMode("signup"); });
+  function setAuthMode(mode) {
+    authMode = mode;
+    document.getElementById("tab-signin").setAttribute("aria-selected", mode === "signin");
+    document.getElementById("tab-signup").setAttribute("aria-selected", mode === "signup");
+    document.getElementById("auth-submit").textContent = mode === "signin" ? "Entrar" : "Criar conta";
+    document.getElementById("auth-error").textContent = "";
+  }
+  document.getElementById("form-auth").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var email = document.getElementById("auth-email").value.trim();
+    var password = document.getElementById("auth-pass").value;
+    var errEl = document.getElementById("auth-error");
+    var btn = document.getElementById("auth-submit");
+    errEl.textContent = "";
+    btn.disabled = true;
+    try {
+      var res = authMode === "signin"
+        ? await sb.auth.signInWithPassword({ email: email, password: password })
+        : await sb.auth.signUp({ email: email, password: password });
+      if (res.error) throw res.error;
+      if (authMode === "signup" && !res.data.session) {
+        errEl.style.color = "var(--positive)";
+        errEl.textContent = "Conta criada! Verifique seu e-mail para confirmar, depois entre.";
+      }
+    } catch (err) {
+      errEl.style.color = "var(--negative)";
+      errEl.textContent = err.message || "Não foi possível autenticar.";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  document.getElementById("btn-signout").addEventListener("click", function () { sb.auth.signOut(); });
+
+  sb.auth.onAuthStateChange(function (event, session) {
+    if (session && session.user) {
+      state.userId = session.user.id;
+      document.getElementById("auth-screen").hidden = true;
+      document.getElementById("app").hidden = false;
+      document.getElementById("user-chip").textContent = session.user.email;
+      loadAll();
+    } else {
+      state.userId = null;
+      document.getElementById("app").hidden = true;
+      document.getElementById("auth-screen").hidden = false;
+    }
+  });
+
+  // ---------- Tabs ----------
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+  function activateTab(name) {
+    tabBtns.forEach(function (b) { b.setAttribute("aria-selected", b.dataset.tab === name ? "true" : "false"); });
+    document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("active", p.id === "panel-" + name); });
+  }
+  tabBtns.forEach(function (b) { b.addEventListener("click", function () { activateTab(b.dataset.tab); }); });
+
+  // ---------- Modals ----------
+  function openModal(id) { document.getElementById(id).hidden = false; }
+  function closeModal(id) { document.getElementById(id).hidden = true; }
+  document.querySelectorAll("[data-close]").forEach(function (b) { b.addEventListener("click", function () { closeModal(b.dataset.close); }); });
+  document.querySelectorAll(".overlay").forEach(function (ov) { ov.addEventListener("click", function (e) { if (e.target === ov) ov.hidden = true; }); });
+
+  // ---------- Data load ----------
+  async function loadAll() {
+    var [h, d, e, hist] = await Promise.all([
+      sb.from("holdings").select("*").order("name"),
+      sb.from("dividends").select("*").order("date", { ascending: false }),
+      sb.from("events").select("*").order("date"),
+      sb.from("history").select("*").order("date"),
+    ]);
+    state.holdings = h.data || [];
+    state.dividends = d.data || [];
+    state.events = e.data || [];
+    state.history = hist.data || [];
+    renderAll();
+  }
+
+  // ---------- Derived metrics ----------
+  function metrics() {
+    var invested = 0, current = 0;
+    state.holdings.forEach(function (h) {
+      invested += (h.quantity || 0) * (h.avg_price || 0);
+      current += (h.quantity || 0) * (h.current_price || 0);
+    });
+    var result = current - invested;
+    return { invested: invested, current: current, result: result, pct: invested > 0 ? (result / invested) * 100 : 0 };
+  }
+  function allocationByType() {
+    var sums = {}; TYPE_ORDER.forEach(function (t) { sums[t] = 0; });
+    state.holdings.forEach(function (h) {
+      var t = TYPES[h.type] ? h.type : "outros";
+      sums[t] += (h.quantity || 0) * (h.current_price || 0);
+    });
+    return sums;
+  }
+  function dividendTotals() {
+    var now = new Date(), month = 0, year = 0, total = 0;
+    state.dividends.forEach(function (dv) {
+      var amt = dv.amount || 0; total += amt;
+      if (!dv.date) return;
+      var d = new Date(dv.date + "T00:00:00");
+      if (isNaN(d.getTime())) return;
+      if (d.getFullYear() === now.getFullYear()) year += amt;
+      if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) month += amt;
+    });
+    return { month: month, year: year, total: total };
+  }
+
+  // ---------- Render ----------
+  function renderHero() {
+    var m = metrics();
+    document.getElementById("hero-total").textContent = fmtBRL(m.current);
+    document.getElementById("stat-invested").textContent = fmtBRL(m.invested);
+    var resEl = document.getElementById("stat-result");
+    resEl.textContent = fmtBRL(m.result);
+    resEl.className = "v mono " + (m.result > 0 ? "pos" : m.result < 0 ? "neg" : "");
+    document.getElementById("stat-count").textContent = String(state.holdings.length);
+    document.getElementById("stat-divs").textContent = fmtBRL(dividendTotals().year);
+
+    var syncEl = document.getElementById("hero-sync");
+    var stamps = state.holdings.map(function (h) { return h.price_updated_at; }).filter(Boolean).sort();
+    syncEl.textContent = stamps.length === 0
+      ? (state.holdings.length ? "Cotações: aguardando 1ª atualização automática (roda 1x por dia)" : "Cotações: cadastre um ativo para começar a sincronizar")
+      : "Cotações atualizadas automaticamente — " + daysAgoLabel(stamps[stamps.length - 1]);
+
+    var badge = document.getElementById("hero-delta");
+    if (m.invested <= 0) { badge.className = "delta-badge flat"; badge.textContent = "Sem dados ainda"; }
+    else if (m.result > 0) { badge.className = "delta-badge up"; badge.innerHTML = "▲ " + fmtBRL(m.result) + " · " + fmtPct(m.pct); }
+    else if (m.result < 0) { badge.className = "delta-badge down"; badge.innerHTML = "▼ " + fmtBRL(Math.abs(m.result)) + " · " + fmtPct(m.pct); }
+    else { badge.className = "delta-badge flat"; badge.textContent = "Estável"; }
+  }
+
+  function renderDonut() {
+    var host = document.getElementById("donut-host");
+    var sums = allocationByType();
+    var total = TYPE_ORDER.reduce(function (a, t) { return a + sums[t]; }, 0);
+    if (total <= 0) { host.innerHTML = '<div class="empty-note">Cadastre ativos na aba Carteira para ver a alocação.</div>'; return; }
+    var r = 62, cx = 80, cy = 80, sw = 24, circumference = 2 * Math.PI * r, gapDeg = 2.4, offsetAcc = 0, segs = "", legend = "";
+    TYPE_ORDER.forEach(function (t) {
+      var val = sums[t]; if (val <= 0) return;
+      var frac = val / total, deg = frac * 360, drawDeg = Math.max(deg - gapDeg, 0.001), len = (drawDeg / 360) * circumference;
+      segs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + TYPES[t].color + '" stroke-width="' + sw +
+        '" stroke-dasharray="' + len + ' ' + (circumference - len) + '" transform="rotate(' + (offsetAcc - 90) + ' ' + cx + ' ' + cy + ')">' +
+        '<title>' + TYPES[t].label + ': ' + fmtBRL(val) + ' (' + (frac * 100).toFixed(1) + '%)</title></circle>';
+      offsetAcc += deg;
+      legend += '<div class="legend-row"><span class="swatch" style="background:' + TYPES[t].color + '"></span><span class="name">' + TYPES[t].label + '</span><span class="pct mono">' + (frac * 100).toFixed(1) + '%</span></div>' +
+        '<div class="amt mono" style="margin:-4px 0 4px 18px;">' + fmtBRL(val) + '</div>';
+    });
+    host.innerHTML = '<div class="donut-wrap"><svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="Alocação por tipo de ativo">' + segs +
+      '<text x="80" y="76" text-anchor="middle" font-size="11" fill="var(--ink-muted)" font-family="IBM Plex Sans, sans-serif">Total</text>' +
+      '<text x="80" y="94" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--ink)" font-family="IBM Plex Mono, monospace">' + fmtBRL(total).replace("R$", "").trim() + '</text></svg>' +
+      '<div class="legend">' + legend + '</div></div>';
+  }
+
+  function renderLine() {
+    var host = document.getElementById("line-host");
+    var pts = state.history.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    if (pts.length === 0) { host.innerHTML = '<div class="empty-note">A evolução aparece aqui conforme a atualização automática grava pontos ao longo do tempo.</div>'; return; }
+    if (pts.length === 1) { host.innerHTML = '<div class="empty-note">Só há um registro até agora (' + fmtDate(pts[0].date) + ': ' + fmtBRL(pts[0].total_current) + ').<br>Volte amanhã para ver a curva.</div>'; return; }
+    var w = 480, h = 180, padL = 8, padR = 8, padT = 14, padB = 22;
+    var vals = pts.map(function (p) { return p.total_current; });
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    if (min === max) { min -= 1; max += 1; }
+    var innerW = w - padL - padR, innerH = h - padT - padB;
+    function xAt(i) { return padL + (i / (pts.length - 1)) * innerW; }
+    function yAt(v) { return padT + innerH - ((v - min) / (max - min)) * innerH; }
+    var linePath = "";
+    pts.forEach(function (p, i) { linePath += (i === 0 ? "M" : "L") + xAt(i).toFixed(1) + "," + yAt(p.total_current).toFixed(1) + " "; });
+    var areaPath = linePath + "L" + xAt(pts.length - 1).toFixed(1) + "," + (padT + innerH) + " L" + xAt(0).toFixed(1) + "," + (padT + innerH) + " Z";
+    var dots = pts.map(function (p, i) { return '<circle class="line-dot" cx="' + xAt(i).toFixed(1) + '" cy="' + yAt(p.total_current).toFixed(1) + '" r="3.5"><title>' + fmtDate(p.date) + ": " + fmtBRL(p.total_current) + '</title></circle>'; }).join("");
+    host.innerHTML = '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" width="100%" role="img" aria-label="Evolução do patrimônio ao longo do tempo">' +
+      '<line x1="' + padL + '" y1="' + (padT + innerH) + '" x2="' + (w - padR) + '" y2="' + (padT + innerH) + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<path d="' + areaPath + '" fill="var(--accent-soft)" stroke="none"/><path d="' + linePath + '" fill="none" stroke="var(--accent)" stroke-width="2"/>' + dots +
+      '<text x="' + padL + '" y="' + (h - 4) + '">' + fmtDate(pts[0].date) + '</text>' +
+      '<text x="' + (w - padR) + '" y="' + (h - 4) + '" text-anchor="end">' + fmtDate(pts[pts.length - 1].date) + '</text></svg>';
+  }
+
+  function renderHoldings() {
+    var host = document.getElementById("holdings-host");
+    if (state.holdings.length === 0) {
+      host.innerHTML = '<div class="empty-state">Nenhum ativo cadastrado ainda.<br><button class="primary-btn" id="empty-add-holding">+ Adicionar primeiro ativo</button></div>';
+      var b = document.getElementById("empty-add-holding");
+      if (b) b.addEventListener("click", function () { openHoldingModal(); });
+      return;
+    }
+    var rows = state.holdings.slice().sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); }).map(function (h) {
+      var val = (h.quantity || 0) * (h.current_price || 0);
+      var rent = h.avg_price > 0 ? ((h.current_price - h.avg_price) / h.avg_price) * 100 : 0;
+      var tinfo = TYPES[h.type] || TYPES.outros;
+      var isRF = h.type === "renda_fixa";
+      var subLabel = isRF
+        ? (h.rf_subtype || "Renda fixa") + " · " + (h.rf_indexer === "ipca" ? "IPCA+" + (h.rf_rate || 0) + "%" : h.rf_indexer === "pre" ? (h.rf_rate || 0) + "% a.a." : (h.rf_rate || 0) + "% do CDI")
+        : (h.ticker ? h.ticker.toUpperCase() : fmtDate(h.purchase_date));
+      return '<tr><td><b>' + escapeHtml(h.name) + '</b><div style="color:var(--ink-muted);font-size:11.5px;">' + subLabel + '</div></td>' +
+        '<td><span class="type-pill"><span class="type-dot" style="background:' + tinfo.color + '"></span>' + tinfo.label + '</span></td>' +
+        '<td class="num mono">' + (isRF ? '—' : (h.quantity || 0)) + '</td>' +
+        '<td class="num mono">' + fmtBRL(h.avg_price || 0) + '</td>' +
+        '<td class="num mono">' + fmtBRL(h.current_price || 0) + '<div style="color:var(--ink-faint);font-size:10.5px;font-weight:400;">' + daysAgoLabel(h.price_updated_at) + '</div></td>' +
+        '<td class="num mono">' + fmtBRL(val) + '</td>' +
+        '<td class="num mono" style="color:' + (rent > 0 ? 'var(--positive)' : rent < 0 ? 'var(--negative)' : 'var(--ink-muted)') + ';font-weight:700;">' + fmtPct(rent) + '</td>' +
+        '<td><div class="row-actions"><button class="icon-btn" data-edit="' + h.id + '">Editar</button><button class="icon-btn danger" data-del="' + h.id + '">Excluir</button></div></td></tr>';
+    }).join("");
+    host.innerHTML = '<div class="table-scroll"><table><thead><tr><th>Ativo</th><th>Tipo</th><th class="num">Qtd.</th><th class="num">Aplicado / P. médio</th><th class="num">Valor atual (un.)</th><th class="num">Valor total</th><th class="num">Rentab.</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    host.querySelectorAll("[data-edit]").forEach(function (b) { b.addEventListener("click", function () { openHoldingModal(b.dataset.edit); }); });
+    host.querySelectorAll("[data-del]").forEach(function (b) { b.addEventListener("click", function () { deleteHolding(b.dataset.del); }); });
+  }
+
+  function renderDividends() {
+    var totals = dividendTotals();
+    document.getElementById("div-month").textContent = fmtBRL(totals.month);
+    document.getElementById("div-year").textContent = fmtBRL(totals.year);
+    document.getElementById("div-total").textContent = fmtBRL(totals.total);
+    var host = document.getElementById("div-host");
+    if (state.dividends.length === 0) { host.innerHTML = '<div class="empty-state">Nenhum provento registrado ainda.</div>'; return; }
+    var rows = state.dividends.slice().sort(function (a, b) { return (b.date || "").localeCompare(a.date || ""); }).map(function (dv) {
+      return '<div class="list-row"><div class="icon">$</div><div class="meta"><div class="t">' + escapeHtml(dv.name) + '</div><div class="d">' + fmtDate(dv.date) + ' · ' + labelType(dv.div_type) + '</div></div>' +
+        '<div class="amt mono" style="color:var(--positive)">+' + fmtBRL(dv.amount || 0) + '</div><button class="icon-btn danger" data-del="' + dv.id + '">Excluir</button></div>';
+    }).join("");
+    host.innerHTML = rows;
+    host.querySelectorAll("[data-del]").forEach(function (b) { b.addEventListener("click", function () { deleteRow("dividends", b.dataset.del); }); });
+  }
+  function labelType(t) { return { dividendo: "Dividendo", jcp: "JCP", rendimento: "Rendimento", outro: "Outro", vencimento: "Vencimento" }[t] || "Provento"; }
+
+  function renderEvents() {
+    var host = document.getElementById("event-host");
+    if (state.events.length === 0) { host.innerHTML = '<div class="empty-state">Nenhum evento cadastrado ainda.</div>'; return; }
+    var today = todayISO();
+    var rows = state.events.slice().sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); }).map(function (ev) {
+      var past = (ev.date || "") < today;
+      return '<div class="list-row" style="opacity:' + (past ? 0.5 : 1) + '"><div class="icon">' + ({ dividendo: "$", vencimento: "⏰", rendimento: "%", outro: "•" }[ev.ev_type] || "•") + '</div>' +
+        '<div class="meta"><div class="t">' + escapeHtml(ev.title) + '</div><div class="d">' + fmtDate(ev.date) + ' · ' + labelType(ev.ev_type) + '</div></div>' +
+        '<button class="icon-btn danger" data-del="' + ev.id + '">Excluir</button></div>';
+    }).join("");
+    host.innerHTML = rows;
+    host.querySelectorAll("[data-del]").forEach(function (b) { b.addEventListener("click", function () { deleteRow("events", b.dataset.del); }); });
+  }
+
+  function renderAll() { renderHero(); renderDonut(); renderLine(); renderHoldings(); renderDividends(); renderEvents(); }
+
+  // ---------- Holding CRUD ----------
+  var RATE_LABELS = { cdi: "Taxa (% do CDI)", ipca: "Spread sobre o IPCA (% a.a.)", pre: "Taxa prefixada (% a.a.)" };
+  function syncHoldingFormGroups() {
+    var isRF = document.getElementById("h-type").value === "renda_fixa";
+    document.getElementById("group-market").hidden = isRF;
+    document.getElementById("group-fixedincome").hidden = !isRF;
+    document.getElementById("h-date-label").textContent = isRF ? "Data de aplicação" : "Data da compra";
+    document.getElementById("h-rf-rate-label").textContent = RATE_LABELS[document.getElementById("h-rf-indexer").value] || RATE_LABELS.cdi;
+  }
+  document.getElementById("h-type").addEventListener("change", syncHoldingFormGroups);
+  document.getElementById("h-rf-indexer").addEventListener("change", syncHoldingFormGroups);
+
+  function openHoldingModal(id) {
+    var form = document.getElementById("form-holding");
+    form.reset();
+    if (id) {
+      var h = state.holdings.find(function (x) { return String(x.id) === String(id); });
+      if (!h) return;
+      document.getElementById("holding-modal-title").textContent = "Editar ativo";
+      document.getElementById("h-id").value = id;
+      document.getElementById("h-name").value = h.name || "";
+      document.getElementById("h-type").value = h.type || "acoes";
+      document.getElementById("h-ticker").value = h.ticker || "";
+      document.getElementById("h-qty").value = h.quantity != null ? h.quantity : "";
+      document.getElementById("h-avg").value = h.avg_price != null ? h.avg_price : "";
+      document.getElementById("h-rf-subtype").value = h.rf_subtype || "CDB";
+      document.getElementById("h-rf-indexer").value = h.rf_indexer || "cdi";
+      document.getElementById("h-rf-rate").value = h.rf_rate != null ? h.rf_rate : "";
+      document.getElementById("h-rf-principal").value = h.avg_price != null ? h.avg_price : "";
+      document.getElementById("h-date").value = h.purchase_date || "";
+    } else {
+      document.getElementById("holding-modal-title").textContent = "Novo ativo";
+      document.getElementById("h-id").value = "";
+    }
+    syncHoldingFormGroups();
+    openModal("overlay-holding");
+  }
+  document.getElementById("btn-add-holding").addEventListener("click", function () { openHoldingModal(); });
+  document.getElementById("form-holding").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var id = document.getElementById("h-id").value;
+    var type = document.getElementById("h-type").value;
+    var isRF = type === "renda_fixa";
+    var name = document.getElementById("h-name").value.trim();
+    var purchaseDate = document.getElementById("h-date").value || null;
+    var payload;
+    if (isRF) {
+      var principal = parseFloat(document.getElementById("h-rf-principal").value) || 0;
+      payload = {
+        name: name, type: type, quantity: 1, avg_price: principal, purchase_date: purchaseDate,
+        rf_subtype: document.getElementById("h-rf-subtype").value,
+        rf_indexer: document.getElementById("h-rf-indexer").value,
+        rf_rate: parseFloat(document.getElementById("h-rf-rate").value) || 0,
+        ticker: null
+      };
+      if (!id) { payload.current_price = principal; payload.price_updated_at = null; }
+    } else {
+      payload = {
+        name: name, type: type, purchase_date: purchaseDate,
+        ticker: document.getElementById("h-ticker").value.trim() || null,
+        quantity: parseFloat(document.getElementById("h-qty").value) || 0,
+        avg_price: parseFloat(document.getElementById("h-avg").value) || 0,
+        rf_subtype: null, rf_indexer: null, rf_rate: null
+      };
+      if (!id) { payload.current_price = payload.avg_price; payload.price_updated_at = null; }
+    }
+    try {
+      if (id) {
+        var { error } = await sb.from("holdings").update(payload).eq("id", id);
+        if (error) throw error;
+      } else {
+        payload.user_id = state.userId;
+        var res2 = await sb.from("holdings").insert(payload);
+        if (res2.error) throw res2.error;
+      }
+      closeModal("overlay-holding");
+      showToast("Ativo salvo");
+      loadAll();
+    } catch (err) { showToast("Erro: " + (err.message || "não foi possível salvar")); }
+  });
+  async function deleteHolding(id) {
+    var { error } = await sb.from("holdings").delete().eq("id", id);
+    if (!error) { showToast("Ativo removido"); loadAll(); }
+  }
+  async function deleteRow(table, id) {
+    var { error } = await sb.from(table).delete().eq("id", id);
+    if (!error) loadAll();
+  }
+
+  // ---------- Dividend CRUD ----------
+  document.getElementById("btn-add-div").addEventListener("click", function () {
+    document.getElementById("form-div").reset();
+    document.getElementById("d-date").value = todayISO();
+    openModal("overlay-div");
+  });
+  document.getElementById("form-div").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var payload = {
+      user_id: state.userId,
+      name: document.getElementById("d-name").value.trim(),
+      amount: parseFloat(document.getElementById("d-amt").value) || 0,
+      date: document.getElementById("d-date").value,
+      div_type: document.getElementById("d-type").value
+    };
+    var { error } = await sb.from("dividends").insert(payload);
+    if (!error) { closeModal("overlay-div"); showToast("Provento registrado"); loadAll(); }
+    else showToast("Erro: " + error.message);
+  });
+
+  // ---------- Event CRUD ----------
+  document.getElementById("btn-add-event").addEventListener("click", function () {
+    document.getElementById("form-event").reset();
+    document.getElementById("e-date").value = todayISO();
+    openModal("overlay-event");
+  });
+  document.getElementById("form-event").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var payload = {
+      user_id: state.userId,
+      title: document.getElementById("e-title").value.trim(),
+      date: document.getElementById("e-date").value,
+      ev_type: document.getElementById("e-type").value
+    };
+    var { error } = await sb.from("events").insert(payload);
+    if (!error) { closeModal("overlay-event"); showToast("Evento salvo"); loadAll(); }
+    else showToast("Erro: " + error.message);
+  });
+})();
+</script>
+</body>
+</html>
